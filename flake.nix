@@ -41,7 +41,7 @@
                     flatbuffers,
                     mc-rtc,
                     zenoh-cpp,
-                    libcap, # for setcap
+                    libcap ? null, # for setcap
                     makeWrapper,
                     with-ros ? true,
                     buildRosPackage,
@@ -70,12 +70,12 @@
                       flatbuffers
                       mc-rtc
                       zenoh-cpp
-                      libcap
-                    ];
+                    ]
+                    ++ lib.optional (libcap != null) libcap;
 
                     # Set cap_sys_nice on the installed binary
                     # This will only work if the user has permission to run `setcap` at runtime.
-                    postInstall = ''
+                    postInstall = lib.optionalString (libcap != null) ''
                       mv $out/bin/uri $out/bin/uri.real
                       makeWrapper ${libcap}/bin/setcap $out/bin/uri \
                         --add-flags "cap_sys_nice+eip $out/bin/uri.real" \
