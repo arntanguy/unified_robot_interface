@@ -55,12 +55,6 @@ add_serializer(
 )
 
 target_link_libraries(robot_comm_flatbuffers PUBLIC mc_rtc_flatbuffers)
-add_dependencies(robot_comm_flatbuffers GENERATE_mc_rtc_flatbuffers)
-
-target_include_directories(
-  robot_comm_flatbuffers
-  PRIVATE "${CMAKE_BINARY_DIR}/robot_comm/mc_rtc_flatbuffers"
-)
 
 add_dependencies(robot_comm_flatbuffers GENERATE_mc_rtc_flatbuffers)
 
