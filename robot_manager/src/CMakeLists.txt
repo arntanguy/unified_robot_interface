@@ -39,6 +39,17 @@ target_include_directories(
   PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../../third_party
 )
 
+# Default Zenoh router config, overridden by ZenohRouter.configuration
+set(ZENOH_ROUTER_CONFIG_DIR ${CMAKE_INSTALL_DATADIR}/unified_robot_interface)
+target_compile_definitions(
+  robot_manager
+  PRIVATE
+    URI_ZENOH_ROUTER_CONFIG="${CMAKE_INSTALL_PREFIX}/${ZENOH_ROUTER_CONFIG_DIR}/zenoh_router.json5"
+)
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/../etc/zenoh_router.json5
+        DESTINATION ${ZENOH_ROUTER_CONFIG_DIR}
+)
+
 install(
   TARGETS robot_interface robot_manager
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

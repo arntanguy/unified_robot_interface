@@ -37,6 +37,8 @@ Enabled: Posture
 Timestep: 0.005              # mc_rtc period, shared by all robots
 
 Controller: mc_rtc           # [optional] controller backend, default mc_rtc
+ZenohRouter:                 # [optional] router started when a robot uses Zenoh
+  configuration: /path/to/router.json5   # default: the zenoh_router.json5 installed with uri
 
 Robots:
   ur5e:                                  # robot name = topic prefix
@@ -72,6 +74,13 @@ Robots:
 | `robot_interface.config_path` | no | `""` | Passed to the driver's `create()` for driver-specific settings |
 | `robot_interface.autostart` | no | `false` | `uri manager` spawns and stops the robot's `uri interface` itself |
 
+### Top-level keys
+
+| Key | Required | Default | Meaning |
+|---|---|---|---|
+| `Controller` | no | `mc_rtc` | Controller backend |
+| `ZenohRouter.configuration` | no | `<prefix>/share/unified_robot_interface/zenoh_router.json5` | Zenoh config file of the router that `uri manager` starts when a robot uses Zenoh. The default file, from `robot_manager/etc/`, listens on `tcp/127.0.0.1:9562` |
+
 ### Timing rules
 
 For every robot, `uri` checks the timing at startup and refuses to start if a
@@ -98,7 +107,8 @@ runs, the last command is sent again.
 2. **Controller**: `ControllerLoader` loads the backend named by `Controller:`
    from `<libdir>/robot_controller/librobot_controller_<backend>.so`.
 3. **Per robot** (`init`):
-   - Start a local Zenoh router if any robot uses Zenoh.
+   - Start a local Zenoh router if any robot uses Zenoh, from
+     `ZenohRouter.configuration` (default: the installed `zenoh_router.json5`).
    - Read the grippers from the RobotModule and add them to the robot's
      config as `grippers: {name: [joints]}`.
    - With `autostart: true`, write `/tmp/robot_manager_<name>_interface.yaml`
@@ -224,8 +234,6 @@ Fixes, from simplest to cleanest:
 
 ## Known limitations
 
-- The Zenoh router config path in `RobotManager::launchZenohRouter()` is
-  hard-coded. Adjust it for your machine.
 - The robot proxy's `controlThread()` is currently a no-op. All robots are
   served by the single main loop.
 - Init waits a fixed 500 ms after spawning before querying. The retry loop

@@ -426,10 +426,17 @@ void RobotManager::launchZenohRouter()
 {
   if(zenoh_router_) return;
 
-  // TODO: remove hardcoded path
-  std::string zenoh_config_path{"/home/vscode/unified_robot_interface/robot_comm/tests/zenoh/router.json5"};
+  // Installed with uri (robot_manager/etc/zenoh_router.json5), unless the config names another file
+  const std::string zenoh_config_path =
+      gconfig_.config("ZenohRouter", mc_rtc::Configuration{})("configuration", std::string{URI_ZENOH_ROUTER_CONFIG});
+  if(!std::filesystem::exists(zenoh_config_path))
+  {
+    throw std::runtime_error(fmt::format("[RobotManager] Zenoh router config not found: {}. Install uri, or set "
+                                         "ZenohRouter: {{configuration: <file>}} in the manager config",
+                                         zenoh_config_path));
+  }
   zenoh::Config config = zenoh::Config::from_file(zenoh_config_path);
-  fmt::print("[robot_manager] Lauching Zenoh Rounter from path {}\n", zenoh_config_path);
+  fmt::print("[robot_manager] Launching Zenoh router from {}\n", zenoh_config_path);
 
   zenoh_router_ = std::make_unique<zenoh::Session>(zenoh::Session::open(std::move(config)));
 

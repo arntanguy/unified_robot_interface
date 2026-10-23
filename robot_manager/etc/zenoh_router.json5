@@ -1,0 +1,20 @@
+// Zenoh router that `uri manager` starts when a robot uses Zenoh. Installed to
+// <prefix>/share/unified_robot_interface/; set `ZenohRouter: {configuration: <file>}`
+// in the manager's mc_rtc.yaml to use another file.
+{
+  "mode": "router",
+  "listen": {
+    "endpoints": [
+      "tcp/127.0.0.1:9562"
+    ]
+  },
+  "scouting": {
+    "multicast": {
+      "enabled": false
+    },
+    "gossip": {
+      "enabled": false
+    }
+  },
+  "plugins": {}
+}
