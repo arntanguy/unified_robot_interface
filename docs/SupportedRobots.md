@@ -11,7 +11,7 @@ drivers. To support a robot that is not listed, see
 |---|---|---|---|---|---|
 | `rtde_driver` | Universal Robots (UR3e/UR5e/UR10e/...) | `RobotDriverRTDE` | [ur_client_library](https://github.com/UniversalRobots/Universal_Robots_Client_Library) (RTDE) | position, velocity, torque | [isri-aist/rtde_driver](https://github.com/isri-aist/rtde_driver) |
 | `kortex_driver` | Kinova Gen3, Gen3 Lite | `RobotDriverKortex` | [Kortex API](https://github.com/Kinovarobotics/kortex) | position, velocity, torque | [isri-aist/kortex_driver](https://github.com/isri-aist/kortex_driver) |
-| `xarm_driver` | UFACTORY xArm | `RobotDriverxArm` | xArm C++ SDK | position | [isri-aist/xarm_driver](https://github.com/isri-aist/xarm_driver) |
+| `xarm_driver` | UFACTORY xArm | `RobotDriverxArm` | xArm C++ SDK | position, velocity | [isri-aist/xarm_driver](https://github.com/isri-aist/xarm_driver) |
 | `triorb_driver` | TriOrb omnidirectional mobile base | `RobotDriverTriOrb` | USB serial (`/dev/ttyACM0`) | position, velocity (planar) | [isri-aist/triorb_driver](https://github.com/isri-aist/triorb_driver) |
 | `ros2_control_driver` | Any robot running a ros2_control `controller_manager` (UR, Franka, OpenArm, Gazebo/MuJoCo sims, ...) | `RobotDriverROS2Control` | ROS 2 topics | position, velocity, torque (depends on the active controllers) | [isri-aist/ros2_control_driver](https://github.com/isri-aist/ros2_control_driver) |
 | `miroki_driver` | Enchanted Tools Mirokai | `RobotDriverMirokai` | ROS 2 topics (`enchanted_msgs`) | position, velocity, torque | [isri-aist/miroki_driver](https://github.com/isri-aist/miroki_driver) (private) |

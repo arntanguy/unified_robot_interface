@@ -495,8 +495,6 @@ void RobotManager::processGConfig(mc_control::MCGlobalController::GlobalConfigur
         throw std::runtime_error(
             fmt::format("Missing 'robot_interface.driver' configuration for robot '{}'\n", robot_name));
       }
-
-      // TODO: are all robots required ip and port
       if(!robot_config("robot_interface").has("ip"))
       {
         throw std::runtime_error(
