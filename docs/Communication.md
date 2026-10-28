@@ -25,6 +25,7 @@ of its traffic uses topics prefixed with that name:
 | `{name}/init` | query / reply | `uri manager` → `uri interface` | the robot's full config as a YAML string; reply `"OK"` or `"ERROR: <reason>"` |
 | `{name}/state` | pub / sub | `uri interface` → `uri manager` | `robot_comm::State` |
 | `{name}/command` | pub / sub | `uri manager` → `uri interface` | `robot_comm::Command` |
+| `uri/alive/{name}/manager`, `uri/alive/{name}/interface` | Zenoh liveliness token | each side watches the other's | none; the token disappears when its process or session is gone |
 
 The two sides take fixed roles. The manager side calls `setupServer()`: it
 sends on `/command` and receives on `/state`. The robot side calls
@@ -34,6 +35,11 @@ sends on `/command` and receives on `/state`. The robot side calls
 `receive()` does not block and returns only the **latest** message. Older
 messages are overwritten, never queued. This fits real-time control, where a
 stale state or command is useless.
+
+`setupServer()` and `setupClient()` also declare a liveliness token for their
+side and watch the other side's. `peerAlive()` turns false once the peer was
+seen and then lost (crash, `kill -9`, network drop), and true again when it
+comes back.
 
 ## Messages
 

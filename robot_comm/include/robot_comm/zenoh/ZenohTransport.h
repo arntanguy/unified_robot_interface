@@ -36,6 +36,10 @@ public:
                                   const ByteBuffer & payload,
                                   std::chrono::milliseconds timeout = std::chrono::seconds(5)) override;
 
+  void declareLiveliness(const std::string & key_expr) override;
+
+  void watchLiveliness(const std::string & key_expr, LivelinessCallback callback) override;
+
 private:
   zenoh::Config configureTransport(const mc_rtc::Configuration & config);
 
@@ -46,6 +50,10 @@ private:
   std::unordered_map<std::string, zenoh::Subscriber<void>> subscribers_;
 
   std::unordered_map<std::string, zenoh::Queryable<void>> queryables_;
+
+  std::unordered_map<std::string, zenoh::LivelinessToken> liveliness_tokens_;
+
+  std::unordered_map<std::string, zenoh::Subscriber<void>> liveliness_subscribers_;
 };
 
 } // namespace robot_comm
