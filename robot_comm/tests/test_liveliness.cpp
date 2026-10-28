@@ -80,3 +80,28 @@ TEST(LivelinessTest, ClientDetectsLostServerAndItsReturn)
   server->setupServer();
   EXPECT_TRUE(waitFor([&] { return client->peerAlive(); })) << "client did not notice the server coming back";
 }
+
+TEST(LivelinessTest, RxAgeTracksLastMessage)
+{
+  auto server = CommunicationFactory::makeCommunication("liveliness_rx_age", networkConfig());
+  auto client = CommunicationFactory::makeCommunication("liveliness_rx_age", networkConfig());
+  server->setupServer();
+  client->setupClient();
+
+  EXPECT_FALSE(server->rxAge().has_value());
+
+  std::this_thread::sleep_for(300ms);
+  ASSERT_TRUE(waitFor(
+      [&]
+      {
+        client->send(ByteBuffer{1, 2, 3});
+        return server->rxAge().has_value();
+      }));
+
+  // Messages still in flight from the loop above may land a bit later.
+  std::this_thread::sleep_for(150ms);
+  EXPECT_GE(*server->rxAge(), 100ms);
+
+  client->send(ByteBuffer{4, 5, 6});
+  EXPECT_TRUE(waitFor([&] { return *server->rxAge() < 100ms; }));
+}

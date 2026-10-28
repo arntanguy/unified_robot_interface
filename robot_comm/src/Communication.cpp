@@ -237,4 +237,11 @@ std::optional<ByteBuffer> Communication::receive(std::chrono::steady_clock::time
   return latest_rx_.value_or(ByteBuffer{});
 }
 
+std::optional<std::chrono::steady_clock::duration> Communication::rxAge()
+{
+  std::lock_guard<std::mutex> lock(rx_mutex_);
+  if(!latest_rx_) return std::nullopt;
+  return std::chrono::steady_clock::now() - latest_rx_time_;
+}
+
 } // namespace robot_comm

@@ -55,6 +55,14 @@ public:
     return true;
   }
 
+  /// Why the connection to the robot counts as lost, or empty while it is
+  /// fine. The manager stops the controller as soon as one robot reports an
+  /// error. Updated by updateSensors().
+  [[nodiscard]] virtual std::string connectionError() const
+  {
+    return {};
+  }
+
   /**
    * @brief Method in charge of robot sensors and commands update
    *

@@ -95,6 +95,10 @@ public:
   /// `arrival` is set, it receives the arrival time (steady clock).
   std::optional<ByteBuffer> receive(std::chrono::steady_clock::time_point * arrival = nullptr);
 
+  /// Receive age: time since the last message on the role's receive topic,
+  /// or nullopt if none arrived yet.
+  std::optional<std::chrono::steady_clock::duration> rxAge();
+
   /// False once the peer endpoint (interface for the server, manager for the
   /// client) was seen and then lost, as reported by the transport's
   /// liveliness. True again when it comes back.

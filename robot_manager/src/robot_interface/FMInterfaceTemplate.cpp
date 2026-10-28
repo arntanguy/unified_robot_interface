@@ -16,6 +16,9 @@ ControlMode parseModeString(const std::string & mode)
   if(mode == "torque") return TORQUE;
   return POSITION;
 }
+
+// Time the robot gets to send its first state once the control loop runs
+constexpr auto first_state_timeout = std::chrono::seconds(10);
 } // namespace
 
 FMInterfaceTemplate::FMInterfaceTemplate(const std::string & name,
@@ -29,6 +32,8 @@ FMInterfaceTemplate::FMInterfaceTemplate(const std::string & name,
   control_mode_ = parseModeString(mode);
   fmt::print("[FMInterfaceTemplate] '{}' control mode: {}\n", name, mode);
 
+  connection_timeout_ = std::chrono::milliseconds(config("network_interface")("connection_timeout_ms", 100));
+
   mc_rtc::Configuration com_config(config("network_interface"));
   auto comm = robot_comm::CommunicationFactory::makeCommunication(name, com_config);
   comm->setupServer();
@@ -37,8 +42,38 @@ FMInterfaceTemplate::FMInterfaceTemplate(const std::string & name,
   fmt::print("[FMInterfaceTemplate] '{}' ready\n", name);
 }
 
+void FMInterfaceTemplate::checkConnection()
+{
+  if(!connection_error_.empty()) return;
+
+  const auto now = std::chrono::steady_clock::now();
+  if(!first_update_) first_update_ = now;
+
+  if(!communication().peerAlive())
+  {
+    connection_error_ = "robot_interface process gone";
+    return;
+  }
+
+  if(!gc_initialized_)
+  {
+    if(now - *first_update_ > first_state_timeout)
+      connection_error_ = fmt::format("no state received within {} s", first_state_timeout.count());
+    return;
+  }
+
+  const auto age = communication().rxAge();
+  if(age && *age > connection_timeout_)
+  {
+    connection_error_ =
+        fmt::format("no state for {} ms", std::chrono::duration_cast<std::chrono::milliseconds>(*age).count());
+  }
+}
+
 void FMInterfaceTemplate::updateSensors(robot_controller::Controller & gc)
 {
+  checkConnection();
+
   std::chrono::steady_clock::time_point arrival;
   auto rx = communication().receive(&arrival);
   if(!rx || rx->empty()) return;

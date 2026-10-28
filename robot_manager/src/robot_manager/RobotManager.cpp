@@ -550,6 +550,19 @@ void RobotManager::mainThread(size_t step_size, const std::atomic<bool> & interr
 
     for(auto & [robot_name, interface] : interfaces_) interface->updateSensors(*controller_);
 
+    // A lost robot leaves the controller running on stale state: stop. The
+    // other robots' interfaces hold their robot once commands stop.
+    for(auto & [robot_name, interface] : interfaces_)
+    {
+      if(const auto error = interface->connectionError(); !error.empty())
+      {
+        fmt::print(stderr, "[RobotManager][error] Lost connection to robot '{}': {}. Stopping the controller.\n",
+                   robot_name, error);
+        controller_->stop();
+        return;
+      }
+    }
+
     // Gate controller.run() until every interface has fed its initial sensor
     // values and called gc.init(), otherwise the Posture task would command
     // the robot from a default (potentially far) configuration.

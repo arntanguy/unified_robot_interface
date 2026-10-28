@@ -22,6 +22,7 @@ RobotInterface::RobotInterface(const std::string & name, const mc_rtc::Configura
   comm_ = robot_comm::CommunicationFactory::makeCommunication(name_, comm_config_);
   comm_->setupClient();
   latency_stats_ = comm_config_("latency_stats", false);
+  connection_timeout_ = std::chrono::milliseconds(comm_config_("connection_timeout_ms", 100));
 }
 
 void RobotInterface::run(const std::atomic<bool> & interrupt)
@@ -61,38 +62,7 @@ void RobotInterface::run(const std::atomic<bool> & interrupt)
   // while waiting for the first command from the manager.
   driver_->sync();
 
-  robot_comm::Command hold;
-
-  if(control_mode_ == "position")
-  {
-    const auto init_q = driver_->getActualQ();
-
-    if(!init_q.empty())
-    {
-      hold.position = init_q;
-      last_cmd_ = std::move(hold);
-    }
-  }
-  else if(control_mode_ == "velocity")
-  {
-    const auto init_q = driver_->getActualQ();
-
-    hold.velocity.assign(init_q.size(), 0.0);
-
-    last_cmd_ = std::move(hold);
-  }
-  else if(control_mode_ == "torque")
-  {
-    const auto init_q = driver_->getActualQ();
-
-    hold.torque.assign(init_q.size(), 0.0);
-
-    last_cmd_ = std::move(hold);
-  }
-  else
-  {
-    throw std::runtime_error("[RobotInterface] Unsupported controller mode: " + control_mode_);
-  }
+  last_cmd_ = makeHoldCommand();
 
   // Control loop: run at driver's natural rate (spin freely, driver sync() paces us).
   while(!interrupt.load())
@@ -252,14 +222,30 @@ void RobotInterface::updateControl()
 {
   std::chrono::steady_clock::time_point arrival;
   auto rx = comm_->receive(&arrival);
-  if(rx && !rx->empty())
+  // receive() keeps returning the latest command: only a new arrival counts
+  if(rx && !rx->empty() && arrival != last_cmd_arrival_)
   {
+    last_cmd_arrival_ = arrival;
     auto cmd_opt =
         comm_->serializer()->deserialize<robot_comm::Command>(robot_comm::MessageType::COMMAND, rx->data(), rx->size());
     if(cmd_opt)
     {
       if(latency_stats_) recordLatency(*cmd_opt, arrival);
+      if(link_lost_)
+      {
+        mc_rtc::log::success("[RobotInterface] '{}' receiving commands again, resuming control", name_);
+        link_lost_ = false;
+      }
       last_cmd_ = std::move(cmd_opt);
+    }
+  }
+  else if(!link_lost_)
+  {
+    if(const auto reason = linkLossReason(); !reason.empty())
+    {
+      mc_rtc::log::error("[RobotInterface] '{}' lost the manager ({}), holding the robot", name_, reason);
+      link_lost_ = true;
+      last_cmd_ = makeHoldCommand();
     }
   }
 
@@ -271,6 +257,47 @@ void RobotInterface::updateControl()
     driver_->speedJ(last_cmd_->velocity);
   else if(!last_cmd_->torque.empty())
     driver_->tauJ(last_cmd_->torque);
+}
+
+std::optional<robot_comm::Command> RobotInterface::makeHoldCommand()
+{
+  const auto q = driver_->getActualQ();
+  robot_comm::Command hold;
+
+  if(control_mode_ == "position")
+  {
+    if(q.empty()) return std::nullopt;
+    hold.position = q;
+  }
+  else if(control_mode_ == "velocity")
+  {
+    hold.velocity.assign(q.size(), 0.0);
+  }
+  else if(control_mode_ == "torque")
+  {
+    hold.torque.assign(q.size(), 0.0);
+  }
+  else
+  {
+    throw std::runtime_error("[RobotInterface] Unsupported controller mode: " + control_mode_);
+  }
+
+  return hold;
+}
+
+std::string RobotInterface::linkLossReason()
+{
+  if(!comm_->peerAlive()) return "manager process gone";
+
+  // Armed once the first command arrived; until then the robot holds anyway.
+  const auto age = comm_->rxAge();
+  if(age && *age > connection_timeout_)
+  {
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(*age).count();
+    return "no command for " + std::to_string(ms) + " ms";
+  }
+
+  return {};
 }
 
 void RobotInterface::recordLatency(const robot_comm::Command & cmd, std::chrono::steady_clock::time_point arrival)

@@ -29,8 +29,20 @@ public:
     return gc_initialized_;
   }
 
+  [[nodiscard]] std::string connectionError() const override
+  {
+    return connection_error_;
+  }
+
 private:
+  void checkConnection();
+
   bool gc_initialized_ = false;
+
+  // Connection watchdog (network_interface.connection_timeout_ms)
+  std::chrono::milliseconds connection_timeout_;
+  std::optional<std::chrono::steady_clock::time_point> first_update_;
+  std::string connection_error_;
 
   // Echoed in each Command for latency measurement.
   uint64_t last_state_stamp_ = 0;
