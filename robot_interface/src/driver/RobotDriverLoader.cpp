@@ -7,7 +7,7 @@
 namespace robot_interface
 {
 
-std::unique_ptr<mc_rtc::ObjectLoader<mc_robot_interface::RobotDriver>> RobotDriverLoader::robot_driver_loader_;
+std::unique_ptr<mc_rtc::ObjectLoader<robot_interface::RobotDriver>> RobotDriverLoader::robot_driver_loader_;
 bool RobotDriverLoader::verbose_ = false;
 std::recursive_mutex RobotDriverLoader::mtx;
 
