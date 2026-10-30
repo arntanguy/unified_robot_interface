@@ -19,6 +19,9 @@ using ReceiveCallback = std::function<void(const std::string & topic, const Byte
 /// Synchronous query handler: receives payload, returns reply payload.
 using QueryHandler = std::function<ByteBuffer(const ByteBuffer & payload)>;
 
+/// Called with true when a watched liveliness token appears, false when it is lost.
+using LivelinessCallback = std::function<void(bool alive)>;
+
 /// Moves raw bytes between processes. Implement it to add a transport
 /// (see docs/Communication.md, "Extending").
 class TransportInterface
@@ -45,6 +48,14 @@ public:
   virtual std::optional<ByteBuffer> query(const std::string & key_expr,
                                           const ByteBuffer & payload,
                                           std::chrono::milliseconds timeout = std::chrono::seconds(5)) = 0;
+
+  /// Announce that this endpoint is alive under `key_expr` until the transport stops.
+  /// Transports without liveliness support ignore it.
+  virtual void declareLiveliness(const std::string & /*key_expr*/) {}
+
+  /// Call `callback` when a liveliness token matching `key_expr` appears or is lost.
+  /// Transports without liveliness support never call it.
+  virtual void watchLiveliness(const std::string & /*key_expr*/, LivelinessCallback /*callback*/) {}
 
 protected:
   mc_rtc::Configuration config_;

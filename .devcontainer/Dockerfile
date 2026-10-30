@@ -8,6 +8,9 @@ ARG RUST_VERSION=1.93.0
 ARG ZENOH_C_VERSION=1.9.0
 ARG ZENOH_CPP_VERSION=1.9.0
 ARG FLATBUFFERS_VERSION=25.12.19
+
+ARG MC_RTC_APT_REFRESH=2026-10-30
+
 # Shared install prefix for this project's from-source dependencies.
 ARG EXTRA_DEPS_PREFIX=/home/vscode/.local/unified_robot_interface-deps
 
@@ -110,7 +113,8 @@ RUN --mount=type=cache,target=/var/cache/apt \
 
 # ── mc_rtc from the mc-rtc "head" apt repository, with ROS support ──────────
 RUN --mount=type=cache,target=/var/cache/apt \
-    curl -1sLf https://dl.cloudsmith.io/public/mc-rtc/head/setup.deb.sh | bash \
+    echo "mc_rtc apt refresh: ${MC_RTC_APT_REFRESH}" \
+    && curl -1sLf https://dl.cloudsmith.io/public/mc-rtc/head/setup.deb.sh | bash \
     && apt-get install -y --no-install-recommends \
       ros-${ROS_DISTRO}-mc-rtc-ros-compat \
       ros-${ROS_DISTRO}-mc-rtc-msgs \

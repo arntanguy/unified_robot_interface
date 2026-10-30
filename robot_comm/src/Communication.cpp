@@ -170,6 +170,8 @@ void Communication::setupServer()
                           latest_rx_time_ = now;
                         });
 
+  setupLiveliness("manager", "interface");
+
   mc_rtc::log::info("[Communication] '{}' configured as server (rx={}, tx={})", name_, rx_topic_, tx_topic_);
 }
 
@@ -187,7 +189,30 @@ void Communication::setupClient()
                           latest_rx_time_ = now;
                         });
 
+  setupLiveliness("interface", "manager");
+
   mc_rtc::log::info("[Communication] '{}' configured as client (rx={}, tx={})", name_, rx_topic_, tx_topic_);
+}
+
+void Communication::setupLiveliness(const std::string & role, const std::string & peer_role)
+{
+  const std::string prefix = "uri/alive/" + name_ + "/";
+
+  transport_->declareLiveliness(prefix + role);
+  transport_->watchLiveliness(prefix + peer_role,
+                              [this, peer_role](bool alive)
+                              {
+                                if(alive)
+                                {
+                                  if(peer_lost_.exchange(false))
+                                    mc_rtc::log::info("[Communication] '{}' {} is back", name_, peer_role);
+                                  peer_seen_ = true;
+                                }
+                                else if(peer_seen_ && !peer_lost_.exchange(true))
+                                {
+                                  mc_rtc::log::error("[Communication] '{}' lost the {}", name_, peer_role);
+                                }
+                              });
 }
 
 bool Communication::send(const ByteBuffer & buffer)
@@ -210,6 +235,13 @@ std::optional<ByteBuffer> Communication::receive(std::chrono::steady_clock::time
   std::lock_guard<std::mutex> lock(rx_mutex_);
   if(arrival) *arrival = latest_rx_time_;
   return latest_rx_.value_or(ByteBuffer{});
+}
+
+std::optional<std::chrono::steady_clock::duration> Communication::rxAge()
+{
+  std::lock_guard<std::mutex> lock(rx_mutex_);
+  if(!latest_rx_) return std::nullopt;
+  return std::chrono::steady_clock::now() - latest_rx_time_;
 }
 
 } // namespace robot_comm

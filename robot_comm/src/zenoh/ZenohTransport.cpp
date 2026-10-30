@@ -60,6 +60,8 @@ void ZenohTransport::start()
 
 void ZenohTransport::stop()
 {
+  liveliness_subscribers_.clear();
+  liveliness_tokens_.clear();
   subscribers_.clear();
   publishers_.clear();
   queryables_.clear();
@@ -187,6 +189,36 @@ std::optional<ByteBuffer> ZenohTransport::query(const std::string & key_expr,
   }
 
   return state->result;
+}
+
+void ZenohTransport::declareLiveliness(const std::string & key_expr)
+{
+  if(liveliness_tokens_.count(key_expr)) return;
+
+  liveliness_tokens_.emplace(key_expr, session_->liveliness_declare_token(zenoh::KeyExpr(key_expr)));
+
+  mc_rtc::log::info("[ZenohTransport] Declared liveliness token '{}'", key_expr);
+}
+
+void ZenohTransport::watchLiveliness(const std::string & key_expr, LivelinessCallback callback)
+{
+  if(liveliness_subscribers_.count(key_expr))
+  {
+    mc_rtc::log::warning("[ZenohTransport] Liveliness of '{}' already watched, ignoring", key_expr);
+    return;
+  }
+
+  // history: also report a token declared before this subscriber
+  auto options = zenoh::Session::LivelinessSubscriberOptions::create_default();
+  options.history = true;
+
+  auto subscriber = session_->liveliness_declare_subscriber(
+      zenoh::KeyExpr(key_expr), [callback](const zenoh::Sample & sample)
+      { callback(sample.get_kind() == Z_SAMPLE_KIND_PUT); }, zenoh::closures::none, std::move(options));
+
+  liveliness_subscribers_.emplace(key_expr, std::move(subscriber));
+
+  mc_rtc::log::info("[ZenohTransport] Watching liveliness of '{}'", key_expr);
 }
 
 } // namespace robot_comm

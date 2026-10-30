@@ -56,6 +56,13 @@ private:
   void updateSensors();
   void updateControl();
 
+  // Command that keeps the robot still in control_mode_: current position, or
+  // zero velocity/torque. nullopt if the driver reports no joints yet.
+  std::optional<robot_comm::Command> makeHoldCommand();
+
+  // Why the link to the manager counts as lost, or empty while it is fine.
+  std::string linkLossReason();
+
   std::string name_;
   mc_rtc::Configuration comm_config_;
   std::unique_ptr<robot_comm::Communication> comm_;
@@ -66,6 +73,13 @@ private:
   // Last received command — re-applied every RTDE cycle to give the robot a
   // continuous stream even when the manager sends at a slower rate than RTDE.
   std::optional<robot_comm::Command> last_cmd_;
+  std::chrono::steady_clock::time_point last_cmd_arrival_;
+
+  // Connection watchdog (network_interface.connection_timeout_ms): when the
+  // manager goes away, last_cmd_ is replaced by a hold command until new
+  // commands arrive.
+  std::chrono::milliseconds connection_timeout_;
+  bool link_lost_ = false;
 
   // Signalled when the init query has been handled and driver is ready.
   std::mutex init_mutex_;

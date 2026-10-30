@@ -25,6 +25,7 @@ endfunction()
 add_mc_test(test_config test_config.cpp)
 add_mc_test(test_server test_server.cpp)
 add_mc_test(test_multiple test_multiple.cpp)
+add_mc_test(test_liveliness test_liveliness.cpp)
 # add_mc_test(test_query_reply test_query_reply.cpp)
 
 # add_mc_test(test_shm test_shm.cpp)

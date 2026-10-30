@@ -68,6 +68,7 @@ Robots:
 | `controller.mode` | no | `position` | Command type sent to the robot |
 | `controller.time_step` | no | `Timestep` | Robot interface control period in seconds. Can differ between robots. |
 | `network_interface.protocol` | no | `zenoh/shm` | See [Communication](docCommunication.html) |
+| `network_interface.connection_timeout_ms` | no | `100` | See [Connection loss](#connection-loss) |
 | `robot_interface.driver` | **yes** | none | Driver plugin class, e.g. `RobotDriverRTDE` |
 | `robot_interface.ip` | **yes** | none | Passed to the driver's `create()`. Required even for drivers that ignore it. |
 | `robot_interface.port` | **yes** | none | Same as `ip` |
@@ -126,14 +127,40 @@ runs, the last command is sent again.
 6. **Main loop** (`mainThread`), every robot period:
    1. `updateSensors()` on every proxy. The first `State` received from a
       robot initializes the mc_rtc robot at its real joint positions.
-   2. Once every robot has been initialized, call `controller.run()` every
+   2. If a proxy reports a lost connection, stop (see
+      [Connection loss](#connection-loss)).
+   3. Once every robot has been initialized, call `controller.run()` every
       `step_size` ticks. Until then, no command is computed, so the robot
       never jumps toward a default posture.
-   3. `updateControl()` on every proxy publishes a `Command` in the robot's
+   4. `updateControl()` on every proxy publishes a `Command` in the robot's
       `controller.mode`.
 
 On `Ctrl+C`, the controller stops, the threads are joined and spawned
 `uri interface` processes receive `SIGTERM`, then `SIGKILL` after 5 s.
+
+## Connection loss
+
+Both sides watch the connection with two checks:
+
+- **Liveliness**: each side holds a Zenoh liveliness token and watches the
+  other's (see [Communication](docCommunication.html)). A crashed or killed
+  process, or a network drop, is noticed at once.
+
+- **Watchdog**: a process is alive but stalled (for example a
+  driver `sync()` blocked because the robot dropped off) is noticed when no
+  new message arrives for `network_interface.connection_timeout_ms` (default
+  100 ms). This guard applies to all communication protocols using by URI.
+  Even future implimentation of other communication protocols does not include "Liveliness" checks, a crashed or killed peer still caught.
+
+What each side does:
+
+| Side | Lost when | Reaction |
+|---|---|---|
+| `uri manager` | the interface's token is lost, or no new `State` for the timeout once the robot is initialized, or no first `State` within 10 s | Logs `Lost connection to robot '<name>': <reason>` and stops the controller; `uri manager` then shuts down as on `Ctrl+C` |
+| `uri interface` | the manager's token is lost, or no new `Command` for the timeout once commands started | Logs `lost the manager (<reason>), holding the robot` and sends a hold command: the current position in `position` mode, zeros in `velocity` and `torque` modes. It resumes when commands arrive again, for example from a restarted manager. |
+
+A custom proxy reports a lost connection by overriding
+`RobotInterfaceBase::connectionError()`.
 
 ## Controller backend
 
@@ -180,6 +207,7 @@ public:
   void updateSensors(robot_controller::Controller & gc) override { /* receive State, gc.setEncoderValues(...) */ }
   void updateControl(robot_controller::Controller & gc) override { /* gc.command(...), send Command */ }
   bool isInitialized() const override { /* true once gc.initializeRobot() was called */ }
+  std::string connectionError() const override { /* empty while connected, see Connection loss */ }
 };
 ```
 

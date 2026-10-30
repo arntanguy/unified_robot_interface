@@ -95,6 +95,18 @@ public:
   /// `arrival` is set, it receives the arrival time (steady clock).
   std::optional<ByteBuffer> receive(std::chrono::steady_clock::time_point * arrival = nullptr);
 
+  /// Receive age: time since the last message on the role's receive topic,
+  /// or nullopt if none arrived yet.
+  std::optional<std::chrono::steady_clock::duration> rxAge();
+
+  /// False once the peer endpoint (interface for the server, manager for the
+  /// client) was seen and then lost, as reported by the transport's
+  /// liveliness. True again when it comes back.
+  bool peerAlive() const
+  {
+    return !peer_lost_;
+  }
+
   // -------------------------------------------------------
   // Accessors
   // -------------------------------------------------------
@@ -126,6 +138,10 @@ protected:
   std::atomic<bool> running_ = false;
 
 private:
+  /// Declare this endpoint's liveliness token and watch the peer's, under
+  /// uri/alive/{name}/{role}.
+  void setupLiveliness(const std::string & role, const std::string & peer_role);
+
   // Role-based send/receive state
   std::string tx_topic_;
   std::string rx_topic_;
@@ -133,6 +149,10 @@ private:
   std::chrono::steady_clock::time_point latest_rx_time_;
   std::mutex rx_mutex_;
   std::shared_ptr<SubscriberBase> rx_subscriber_;
+
+  // Peer liveliness
+  std::atomic<bool> peer_seen_ = false;
+  std::atomic<bool> peer_lost_ = false;
 };
 
 //------------------------------------------------------------
