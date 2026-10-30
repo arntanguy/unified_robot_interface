@@ -18,5 +18,6 @@ compile_commands.json
 # hdoc output
 hdoc-output
 
+CLAUDE.md
 CLAUDE.local.md
-.claude/skills/
+.claude/
